@@ -1,4 +1,4 @@
-package com.shpp.p2p.cs.ashepel.assignment10.parametersProcessing;
+package alex.shepel.calculator.parametersProcessing;
 
 import java.io.IOException;
 

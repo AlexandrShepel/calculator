@@ -1,4 +1,4 @@
-package com.shpp.p2p.cs.ashepel.assignment10.utility;
+package alex.shepel.calculator.utility;
 
 import java.util.HashMap;
 

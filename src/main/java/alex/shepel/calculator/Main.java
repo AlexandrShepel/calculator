@@ -1,9 +1,9 @@
-package com.shpp.p2p.cs.ashepel.assignment10;
+package alex.shepel.calculator;
 
-import com.shpp.p2p.cs.ashepel.assignment10.equationProcessing.EquationInspector;
-import com.shpp.p2p.cs.ashepel.assignment10.equationProcessing.EquationParser;
-import com.shpp.p2p.cs.ashepel.assignment10.parametersProcessing.ParametersInspector;
-import com.shpp.p2p.cs.ashepel.assignment10.parametersProcessing.ParametersParser;
+import alex.shepel.calculator.equationProcessing.EquationInspector;
+import alex.shepel.calculator.equationProcessing.EquationParser;
+import alex.shepel.calculator.parametersProcessing.ParametersInspector;
+import alex.shepel.calculator.parametersProcessing.ParametersParser;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -11,13 +11,18 @@ import java.util.HashSet;
 import java.util.Scanner;
 
 /**
- * Represents a calculator. Receives an equation
- * and its parameters in the form of String values.
- * Checks them for correctness and returns calculations
- * result to the console.
+ * Represents a calculator console interface.
+ * Interacts with a user. Input equation and parameters
+ * must be input as program arguments.
  */
-public class Assignment10 {
+public class Main {
 
+    /**
+     * Makes calculations. Receives an equation
+     * and its parameters in the form of String values.
+     * Checks them for correctness and returns calculations
+     * result to the console.
+     */
     public static Calculator calculator;
 
     /**
@@ -40,17 +45,22 @@ public class Assignment10 {
             System.exit(0);
         }
 
+        /* Checks and parses parameters. */
         String[] promptParameters = (args.length > 1) ? Arrays.copyOfRange(args, 1, args.length) : null;
         final String promptEquation = args[0];
         checkParameters(promptParameters);
         ParametersParser parametersParser = new ParametersParser(promptParameters);
         final HashSet<String> parametersHashSet = new HashSet<>(parametersParser.getParameters().keySet());
+
+        /* Checks and parses equation. */
         checkEquation(promptEquation, parametersHashSet);
         final EquationParser equationParser = new EquationParser(promptEquation);
 
+        /* Calculates the result. */
         calculator = new Calculator(equationParser.getNotations(), parametersParser.getParameters());
         System.out.println("Result = " + calculator.getResult());
 
+        /* Prompts for new parameters. */
         while (true) {
             if (promptOption().equals("1")) {
                 calculator = new Calculator(
