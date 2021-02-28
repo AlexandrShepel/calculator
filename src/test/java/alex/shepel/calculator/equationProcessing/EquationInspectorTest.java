@@ -1,4 +1,4 @@
-package com.shpp.p2p.cs.ashepel.assignment10.equationProcessing;
+package alex.shepel.calculator.equationProcessing;
 
 import org.junit.jupiter.api.Test;
 

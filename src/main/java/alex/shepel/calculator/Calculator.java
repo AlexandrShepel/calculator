@@ -1,6 +1,6 @@
-package com.shpp.p2p.cs.ashepel.assignment10;
+package alex.shepel.calculator;
 
-import com.shpp.p2p.cs.ashepel.assignment10.utility.MathNotation;
+import alex.shepel.calculator.utility.MathNotation;
 
 import java.util.HashMap;
 

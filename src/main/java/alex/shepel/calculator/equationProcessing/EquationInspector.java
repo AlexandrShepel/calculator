@@ -1,6 +1,6 @@
-package com.shpp.p2p.cs.ashepel.assignment10.equationProcessing;
+package alex.shepel.calculator.equationProcessing;
 
-import com.shpp.p2p.cs.ashepel.assignment10.utility.MathLibrary;
+import alex.shepel.calculator.utility.MathLibrary;
 
 import java.io.IOException;
 import java.util.Arrays;
