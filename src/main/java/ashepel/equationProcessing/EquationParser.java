@@ -1,7 +1,7 @@
-package alex.shepel.calculator.equationProcessing;
+package ashepel.equationProcessing;
 
-import alex.shepel.calculator.utility.MathNotation;
-import alex.shepel.calculator.utility.MathLibrary;
+import ashepel.utility.MathLibrary;
+import ashepel.utility.MathNotation;
 
 import java.util.HashMap;
 
@@ -14,17 +14,88 @@ import java.util.HashMap;
 public class EquationParser {
 
     private final MathLibrary mathLibrary = new MathLibrary();
-    private final HashMap<Integer, MathNotation> mathNotations;
-    private final String equation;
+    private final HashMap<Integer, MathNotation> mathNotations = new HashMap<>();
+    private String parsingEquation;
 
-    /**
-     * The class constructor.
-     *
-     * @param promptEquation An input equation.
-     */
-    public EquationParser(String promptEquation) {
-        equation = removeSpacings(promptEquation);
-        mathNotations = getCalculationNotations(equation);
+    public void parse(String promptEquation) {
+        parsingEquation = removeSpacings(promptEquation);
+        mathNotations.putAll(getNotations());
+    }
+
+    private HashMap<Integer, MathNotation> getNotations() {
+        final HashMap<Integer, MathNotation> mathNotations = new HashMap<>();
+
+        for (int index = 0; index < parsingEquation.length(); index++) {
+            if (parsingEquation.charAt(index) == ')') {
+                int oppositeIndex = index - 1;
+
+                while (parsingEquation.charAt(oppositeIndex) != '(')
+                    oppositeIndex--;
+
+                int openIndex = oppositeIndex;
+                String beforeBracketsEquation = parsingEquation.substring(0, openIndex);
+                String insideBracketsEquation = parsingEquation.substring(openIndex + 1, index);
+                String afterBracketsEquation = parsingEquation.substring(index + 1);
+                String equationToCheck = insideBracketsEquation;
+
+                if (insideBracketsEquation.charAt(0) == '-')
+                    equationToCheck = insideBracketsEquation.substring(1);
+
+                for (String operator : mathLibrary.getOperatorsArray()) {
+                    if (equationToCheck.contains(operator)) {
+                        mathNotations.putAll(getOperatorsNotations(insideBracketsEquation, mathNotations.size()));
+                        insideBracketsEquation = replaceWithMaskWhole(
+                                insideBracketsEquation, mathNotations.get(mathNotations.size() - 1));
+                        parsingEquation =
+                                beforeBracketsEquation + "(" + insideBracketsEquation + ")" + afterBracketsEquation;
+                        break;
+                    }
+                }
+
+                char checkingChar = (oppositeIndex > 0) ? parsingEquation.charAt(--oppositeIndex) : 0;
+                boolean isFunction = oppositeIndex > 0 && (isDigit(checkingChar) || isLetter(checkingChar));
+
+                if (isFunction)
+                    mathNotations.put(mathNotations.size(),
+                            getFunctionNotation(openIndex, index, mathNotations.size()));
+
+                else if (insideBracketsEquation.contains("@"))
+                    parsingEquation = beforeBracketsEquation + "@@" + insideBracketsEquation + afterBracketsEquation;
+            }
+        }
+
+        mathNotations.putAll(getOperatorsNotations(parsingEquation, mathNotations.size()));
+
+        return mathNotations;
+    }
+
+    private MathNotation getFunctionNotation(int openIndex, int closeIndex, int minPriority) {
+        int oppositeIndex = openIndex - 1;
+
+        while (isDigit(parsingEquation.charAt(oppositeIndex)) || isLetter(parsingEquation.charAt(oppositeIndex)))
+            if (--oppositeIndex == -1)
+                break;
+
+        int functionBeginning = oppositeIndex + 1;
+        String functionArgument = parsingEquation.substring(openIndex + 1, closeIndex);
+
+        if (functionArgument.contains("@"))
+            functionArgument = "@" + functionArgument.replace("@", "");
+
+        MathNotation mathNotation = new MathNotation(
+                mathNotations.size() + minPriority,
+                functionBeginning,
+                parsingEquation.substring(functionBeginning, openIndex),
+                functionArgument
+        );
+
+        String beforeFunctionEquation = parsingEquation.substring(0, functionBeginning);
+        String functionEquation = parsingEquation.substring(functionBeginning, closeIndex + 1);
+        String afterFunctionEquation = parsingEquation.substring(closeIndex + 1);
+        functionEquation = replaceWithMaskWhole(functionEquation, mathNotation);
+        parsingEquation = beforeFunctionEquation + functionEquation + afterFunctionEquation;
+
+        return mathNotation;
     }
 
     /**
@@ -51,29 +122,39 @@ public class EquationParser {
      *         Operation priority is a key.
      *         Math notation is a value.
      */
-    private HashMap<Integer, MathNotation> getCalculationNotations(String equation) {
+    private HashMap<Integer, MathNotation> getOperatorsNotations(String equation, int minPriority) {
         HashMap<Integer, String> operators = getEquationOperators(equation);
         HashMap<Integer, MathNotation> mathNotations = new HashMap<>();
         int operatorsCount = operators.size();
 
-        for (int index = 0; index < operatorsCount; index++) {
-            int priorityOperatorIndex = getPriorityOperatorIndex(operators);
+        for (int count = 0; count < operatorsCount; count++) {
+            int priorityOperatorIndex = getPriorityOperatorIndex(operators, equation);
             String priorityOperator = operators.get(priorityOperatorIndex);
             String leftMember = getLeftMember(priorityOperatorIndex, equation);
             String rightMember = getRightMember(priorityOperatorIndex, priorityOperator.length(), equation);
             MathNotation mathNotation = new MathNotation(
-                    index,
+                    count + minPriority,
                     priorityOperatorIndex - leftMember.length(),
                     priorityOperator,
-                    leftMember,
-                    rightMember
+                    (leftMember.contains("@")) ? "@" + leftMember.replace("@", "") : leftMember,
+                    (rightMember.contains("@")) ? "@" + rightMember.replace("@", "") : rightMember
             );
             mathNotations.put(mathNotation.getPriority(), mathNotation);
-            equation = replaceWithMask(equation, mathNotation);
+            equation = replaceWithMaskByIndex(equation, leftMember, rightMember, mathNotation);
             operators.remove(priorityOperatorIndex);
         }
 
         return mathNotations;
+    }
+
+    private String replaceWithMaskWhole(String equation, MathNotation mathNotation) {
+        int countToAdd = equation.length() - mathNotation.getMask().length();
+        StringBuilder maskedEquation = new StringBuilder(mathNotation.getMask());
+
+        for (int index = 0; index < countToAdd; index++)
+            maskedEquation.insert(0, "@");
+
+        return "" + maskedEquation;
     }
 
     /**
@@ -181,7 +262,7 @@ public class EquationParser {
      * @param operators A HashMap with operators.
      * @return An index of the most priority operator.
      */
-    private int getPriorityOperatorIndex(HashMap<Integer, String> operators) {
+    private int getPriorityOperatorIndex(HashMap<Integer, String> operators, String equation) {
         int highestPriorityIndex = 0;
         String[] values = new String[operators.size()];
         int arrayIndex = 0;
@@ -214,20 +295,25 @@ public class EquationParser {
      * Replaces a part of the specified equation
      * with its notation mask.
      *
+     *
      * @param equation An input equation.
+     * @param rightMember The right argument of the operation.
+     * @param leftMember The left argument of the operation.
      * @param mathNotation A math notation that must be
      *                     found in the equation.
      * @return An equation which part is replaced with notation mask.
      */
-    private String replaceWithMask(String equation, MathNotation mathNotation) {
-        int countToAdd = mathNotation.toString().length() - mathNotation.getMask().length();
+    private String replaceWithMaskByIndex(
+            String equation, String leftMember, String rightMember, MathNotation mathNotation) {
+
+        int countToAdd = leftMember.length() + "+".length() + rightMember.length() - mathNotation.getMask().length();
         StringBuilder extendedMask = new StringBuilder(mathNotation.getMask());
 
         for (int index = 0; index < countToAdd; index++)
             extendedMask.insert(0, "@");
 
         String leftPart = equation.substring(0, mathNotation.getIndex());
-        String rightPart = equation.substring(mathNotation.getIndex() + mathNotation.toString().length());
+        String rightPart = equation.substring(mathNotation.getIndex() + extendedMask.length());
 
         return leftPart.concat("" + extendedMask).concat(rightPart);
     }
@@ -245,12 +331,8 @@ public class EquationParser {
     private String replaceWithAt(String string, String target) {
         String leftPart = string.substring(0, string.indexOf(target));
         String rightPart = string.substring(string.indexOf(target) + target.length());
-        StringBuilder targetPart = new StringBuilder();
 
-        for (int index = 0; index < target.length(); index++)
-            targetPart.append("@");
-
-        return leftPart + targetPart + rightPart;
+        return leftPart + "@".repeat(target.length()) + rightPart;
     }
 
     /**
@@ -277,7 +359,7 @@ public class EquationParser {
      * @return A HashMap of the equation's notations.
      *         Execution priority of the operator is a key.
      */
-    public HashMap<Integer, MathNotation> getNotations() {
+    public HashMap<Integer, MathNotation> getNotationsHashMap() {
         return mathNotations;
     }
 

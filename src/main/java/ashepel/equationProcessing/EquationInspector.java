@@ -1,21 +1,19 @@
-package alex.shepel.calculator.equationProcessing;
+package ashepel.equationProcessing;
 
-import alex.shepel.calculator.utility.MathLibrary;
+import ashepel.utility.MathLibrary;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Checks input equation for incorrectness.
  */
 public class EquationInspector {
 
-    private final String equation;
-    private final HashSet<String> parameters;
     private final MathLibrary mathLibrary = new MathLibrary();
-    private final HashMap<String, Boolean> isParameterUsed = new HashMap<>();
 
     /*
      * Contains one boolean value per each char of the input equation.
@@ -26,42 +24,33 @@ public class EquationInspector {
      * we must see entire array equals to "true".
      * So, this is a self-diagnostic data array.
      */
-    private final boolean[] isChecked;
+    private boolean[] isChecked;
 
     /**
-     * The class constructor.
+     * Runs equation checking.
      *
      * @param equation An input equation.
      * @param parameters A HashSet of the parameters names.
      *                   Used to check that all of them
      *                   are represented in the equation.
-     */
-    public EquationInspector(String equation, HashSet<String> parameters) {
-        this.equation = removeSpacings(equation);
-        this.parameters = parameters;
-
-        this.isChecked = new boolean[this.equation.length()];
-        Arrays.fill(this.isChecked, false);
-
-        for (String name: parameters)
-            isParameterUsed.put(name, false);
-    }
-
-    /**
-     * Runs equation checking.
-     *
      * @throws IOException An incorrect equation exception.
      */
-    public void run() throws IOException {
-        checkExpectedMathLogic(equation);
+    public void inspect(String equation, Set<String> parameters) throws IOException {
+        HashSet<String> parametersHashSet = new HashSet<>(parameters);
+        equation = removeSpacings(equation);
+        isChecked = new boolean[equation.length()];
+        Arrays.fill(isChecked, false);
 
+        checkExpectedMathLogic(equation);
         checkUnexpectedSymbols(equation);
-        checkUnexpectedParameters(equation);
-        checkUnexpectedZeroSymbol(equation);
-        checkUnexpectedLastSymbol(equation);
         checkUnexpectedPoints(equation);
         checkUnexpectedNumbers(equation);
+        checkUnexpectedParameters(equation, parametersHashSet);
+        checkUnexpectedZeroSymbol(equation);
+        checkUnexpectedLastSymbol(equation);
         checkUnexpectedMathSymbols(equation);
+        checkFunctions(equation);
+        checkBrackets(equation);
 
         if (!isBooleanArrayTrue(isChecked))
             throw new IOException("Equation is incorrect. But we don't know why.");
@@ -82,6 +71,9 @@ public class EquationInspector {
         for (String symbol: mathLibrary.getOperatorsArray())
             if (equation.substring(1).contains(symbol)) return;
 
+        for (String function: mathLibrary.getFunctionsArray())
+            if (equation.contains(function)) return;
+
         throw new IOException("The equation doesn't contain any math logic.");
     }
 
@@ -97,8 +89,62 @@ public class EquationInspector {
 
             char ch = equation.charAt(index);
 
-            if (!(isLetter(ch) || isDigit(ch) || mathLibrary.isMathOperator(String.valueOf(ch)) || ch == '.'))
+            if (!(isLetter(ch) || isDigit(ch) || ch == '.' || ch == '(' || ch == ')'
+                    || mathLibrary.isMathOperator("" + ch)))
                 throw new IOException("The equation contains unexpected symbol \"" + ch + "\"");
+        }
+    }
+
+    /**
+     * Checks if equation contains unexpected points.
+     *
+     * @param equation An input equation.
+     * @throws IOException An incorrect equation exception.
+     */
+    private void checkUnexpectedPoints(String equation) throws IOException {
+        for (int index = 1; index < equation.length() - 1; index++) {
+            if (isChecked[index]) continue;
+
+            if (equation.charAt(index) != '.') continue;
+
+            char previousChar = equation.charAt(index - 1);
+            char nextChar = equation.charAt(index + 1);
+
+            if (!isDigit(previousChar) || !isDigit(nextChar))
+                throw new IOException("The equation contains unexpected point.");
+        }
+    }
+
+    /**
+     * Checks if equation contains unexpected numbers.
+     *
+     * @param equation An input equation.
+     */
+    private void checkUnexpectedNumbers(String equation) throws IOException {
+        for (int index = 0; index < equation.length(); index++) {
+            if (isChecked[index]) continue;
+
+            boolean isLastChar = (index >= equation.length() - 1);
+            boolean isParameterOrFunction = index > 0 && isLetter(equation.charAt(index - 1));
+            char ongoingChar = equation.charAt(index);
+
+            if (isDigit(ongoingChar)) {
+                if (isLastChar) {
+                    isChecked[index] = true;
+                    return;
+                }
+
+                int startIndex = index;
+
+                while ((index + 1) < equation.length() &&
+                        (isDigit(equation.charAt(index + 1)) || equation.charAt(index + 1) == '.'))
+                    index++;
+
+                if (equation.substring(startIndex, index + 1).contains(".") && isParameterOrFunction)
+                    throw new IOException("Missed operator on the position " + startIndex + ".");
+
+                Arrays.fill(isChecked, startIndex, index + 1, true);
+            }
         }
     }
 
@@ -110,7 +156,12 @@ public class EquationInspector {
      * @param equation An input equation.
      * @throws IOException An incorrect equation exception.
      */
-    private void checkUnexpectedParameters(String equation) throws IOException {
+    private void checkUnexpectedParameters(String equation, HashSet<String> parameters) throws IOException {
+        HashMap<String, Boolean> isParameterUsed = new HashMap<>();
+
+        for (String name: parameters)
+            isParameterUsed.put(name, false);
+
         for (int index = 0; index < equation.length(); index++) {
             if (isChecked[index]) continue;
 
@@ -133,10 +184,13 @@ public class EquationInspector {
                     nextChar = (index + 1 < equation.length()) ? equation.charAt(++index) : '+';
                 }
 
-                if (!parameters.contains("" + name))
-                    throw new IOException("The parameter \"" + name + "\" is not specified.");
+                if (!parameters.contains("" + name)) {
+                    if (!mathLibrary.isFunction("" + name))
+                        throw new IOException("The parameter \"" + name + "\" is not specified.");
+                }
 
-                isParameterUsed.replace("" + name, true);
+                else isParameterUsed.replace("" + name, true);
+
                 Arrays.fill(isChecked, startIndex, index + 1, true);
             }
         }
@@ -154,7 +208,7 @@ public class EquationInspector {
     private void checkUnexpectedZeroSymbol(String equation) throws IOException {
         char firstChar = equation.charAt(0);
 
-        if (!(isDigit(firstChar) || isLetter(firstChar) || firstChar == '-'))
+        if (!(isDigit(firstChar) || isLetter(firstChar) || firstChar == '-' || firstChar == '('))
             throw new IOException("The equation contains unexpected symbol \"" + firstChar + "\" on the 0 position");
 
         if (firstChar == '-' && !mathLibrary.isMathOperator("" + equation.charAt(1)))
@@ -170,60 +224,8 @@ public class EquationInspector {
     private void checkUnexpectedLastSymbol(String equation) throws IOException {
         char lastChar = equation.charAt(equation.length() - 1);
 
-        if (!(isDigit(lastChar) || isLetter(lastChar)))
+        if (!(isDigit(lastChar) || isLetter(lastChar) || lastChar == ')'))
             throw new IOException("The equation contains unexpected symbol \"" + lastChar + "\" on the last position");
-    }
-
-    /**
-     * Checks if equation contains unexpected points.
-     *
-     * @param equation An input equation.
-     * @throws IOException An incorrect equation exception.
-     */
-    private void checkUnexpectedPoints(String equation) throws IOException {
-        if (equation.charAt(equation.length() - 1) == '.')
-            throw new IOException("The equation contains unexpected point.");
-
-        for (int index = 1; index < equation.length() - 1; index++) {
-            if (isChecked[index]) continue;
-
-            if (equation.charAt(index) != '.') continue;
-
-            char previousChar = equation.charAt(index - 1);
-            char nextChar = equation.charAt(index + 1);
-
-            if (!isDigit(previousChar) || !isDigit(nextChar))
-                throw new IOException("The equation contains unexpected point.");
-        }
-    }
-
-    /**
-     * Checks if equation contains unexpected numbers.
-     *
-     * @param equation An input equation.
-     */
-    private void checkUnexpectedNumbers(String equation) {
-        for (int index = 0; index < equation.length(); index++) {
-            if (isChecked[index]) continue;
-
-            boolean isLastChar = (index >= equation.length() - 1);
-            char ongoingChar = equation.charAt(index);
-
-            if (isDigit(ongoingChar)) {
-                if (isLastChar) {
-                    isChecked[index] = true;
-                    return;
-                }
-
-                char nextChar = equation.charAt(index + 1);
-                int startIndex = index;
-
-                while ((index + 1) < equation.length() && (isDigit(nextChar) || nextChar == '.'))
-                    index++;
-
-                Arrays.fill(isChecked, startIndex, index + 1, true);
-            }
-        }
     }
 
     /**
@@ -257,6 +259,49 @@ public class EquationInspector {
 
                 else
                     isChecked[index] = true;
+            }
+        }
+    }
+
+    private void checkBrackets(String equation) throws IOException {
+        int redundantCount = 0;
+        int lastOpenIndex = 0;
+
+        for (int index = 0; index < equation.length(); index++) {
+            if (equation.charAt(index) == '(') {
+                redundantCount++;
+                lastOpenIndex = index;
+                isChecked[index] = true;
+            }
+
+            else if (equation.charAt(index) == ')' && index != lastOpenIndex + 1) {
+                redundantCount--;
+                isChecked[index] = true;
+            }
+        }
+
+        if (redundantCount != 0)
+            throw new IOException("The equation contains incorrect brackets.");
+    }
+
+    private void checkFunctions(String equation) throws IOException {
+        for (int index = 1; index < equation.length(); index++) {
+            if (equation.charAt(index) == '(') {
+                int oppositeIndex = index - 1;
+
+                if (!isDigit(equation.charAt(oppositeIndex)) && !isLetter(equation.charAt(oppositeIndex)))
+                    continue;
+
+                while (isDigit(equation.charAt(oppositeIndex)) || isLetter(equation.charAt(oppositeIndex)))
+                    if (--oppositeIndex == -1)
+                        break;
+
+                if (!mathLibrary.isFunction(equation.substring(++oppositeIndex, index)))
+                    throw new IOException(
+                            "Unknown function \"" + equation.substring(oppositeIndex, index) + "\".");
+
+                else
+                    Arrays.fill(isChecked, oppositeIndex, index + 1, true);
             }
         }
     }

@@ -1,4 +1,4 @@
-package alex.shepel.calculator.parametersProcessing;
+package ashepel.parametersProcessing;
 
 import java.util.HashMap;
 
@@ -7,16 +7,7 @@ import java.util.HashMap;
  */
 public class ParametersParser {
 
-    private final HashMap<String, Double> parametersHashMap;
-
-    /**
-     * The class constructor.
-     *
-     * @param promptParameters An input String[] array of the parameters.
-     */
-    public ParametersParser(String[] promptParameters) {
-        parametersHashMap = (promptParameters == null) ? null : toHashMap(removeSpacings(promptParameters));
-    }
+    private HashMap<String, Double> parametersHashMap;
 
     /**
      * Converts input String[] array to the HashMap.
@@ -24,9 +15,9 @@ public class ParametersParser {
      * Parameters values becomes map's values.
      *
      * @param promptParameters An input String[] array of the parameters.
-     * @return A HashMap of the input parameters.
      */
-    private HashMap<String, Double> toHashMap(String[] promptParameters) {
+    public void parse(String[] promptParameters) {
+        promptParameters = removeSpacings(promptParameters);
         HashMap<String, Double> parametersHashMap = new HashMap<>();
 
         for (String parameter : promptParameters) {
@@ -35,7 +26,7 @@ public class ParametersParser {
             parametersHashMap.put(name, Double.valueOf(value));
         }
 
-        return parametersHashMap;
+        this.parametersHashMap = parametersHashMap;
     }
 
     /**
@@ -62,7 +53,7 @@ public class ParametersParser {
     /**
      * @return Parameters in the HashMap format.
      */
-    public HashMap<String, Double> getParameters() {
+    public HashMap<String, Double> getParametersHashMap() {
         return (parametersHashMap == null) ? new HashMap<>() : parametersHashMap;
     }
 

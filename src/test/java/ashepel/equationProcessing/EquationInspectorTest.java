@@ -1,4 +1,4 @@
-package alex.shepel.calculator.equationProcessing;
+package ashepel.equationProcessing;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,11 +11,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 class EquationInspectorTest {
 
     private void assertException(String input0, HashSet<String> input1, String expected) {
-        EquationInspector equationInspector = new EquationInspector(input0, input1);
+        EquationInspector equationInspector = new EquationInspector();
 
         try {
-            equationInspector.run();
-            fail("Program must trows exception, but it doesn't.");
+            equationInspector.inspect(input0, input1);
+            fail("Program must throws exception, but it doesn't.");
         }
 
         catch (IOException ioException) {
@@ -158,5 +158,50 @@ class EquationInspectorTest {
 
         assertException(input0, input1, expected);
     }
+
+    @Test
+    void runTest12() {
+        String input0 = "a+b2.0";
+        HashSet<String> input1 = new HashSet<>();
+        input1.add("a");
+        input1.add("b2");
+        String expected = "Missed operator on the position 3.";
+
+        assertException(input0, input1, expected);
+    }
+
+    @Test
+    void runTest13() {
+        String input0 = "a+b(a+b)";
+        HashSet<String> input1 = new HashSet<>();
+        input1.add("a");
+        input1.add("b");
+        String expected = "Unknown function \"b\".";
+
+        assertException(input0, input1, expected);
+    }
+
+    @Test
+    void runTest14() {
+        String input0 = "a+b+()";
+        HashSet<String> input1 = new HashSet<>();
+        input1.add("a");
+        input1.add("b");
+        String expected = "The equation contains incorrect brackets.";
+
+        assertException(input0, input1, expected);
+    }
+
+    @Test
+    void runTest15() {
+        String input0 = "a+b+((a+b)";
+        HashSet<String> input1 = new HashSet<>();
+        input1.add("a");
+        input1.add("b");
+        String expected = "The equation contains incorrect brackets.";
+
+        assertException(input0, input1, expected);
+    }
+
 
 }

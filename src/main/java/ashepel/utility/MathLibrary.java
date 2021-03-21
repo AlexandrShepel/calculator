@@ -1,4 +1,4 @@
-package alex.shepel.calculator.utility;
+package ashepel.utility;
 
 import java.util.HashMap;
 
@@ -8,18 +8,26 @@ import java.util.HashMap;
 public class MathLibrary {
 
     private static final HashMap<String, Integer> operatorsPriority = new HashMap<>();
-    private static final String[] allowedSequences = {"*-", "/-", "^-"};
-
-    /**
-     * The class constructor.
-     */
-    public MathLibrary() {
+    static {
         operatorsPriority.put("+", 0);
         operatorsPriority.put("-", 0);
         operatorsPriority.put("*", 1);
         operatorsPriority.put("/", 1);
         operatorsPriority.put("^", 2);
     }
+
+    private static final HashMap<String, Integer> functionsPriority = new HashMap<>();
+    static {
+        functionsPriority.put("sin", 3);
+        functionsPriority.put("cos", 3);
+        functionsPriority.put("tan", 3);
+        functionsPriority.put("atan", 3);
+        functionsPriority.put("log10", 3);
+        functionsPriority.put("log2", 3);
+        functionsPriority.put("sqrt", 3);
+    }
+
+    private static final String[] allowedSequences = {"*-", "/-", "^-"};
 
     /**
      * Returns the most priority operator of the input array.
@@ -87,4 +95,17 @@ public class MathLibrary {
         return operators;
     }
 
+    public String[] getFunctionsArray() {
+        String[] operators = new String[functionsPriority.size()];
+        int index = 0;
+
+        for (String operator : functionsPriority.keySet())
+            operators[index++] = operator;
+
+        return operators;
+    }
+
+    public boolean isFunction(String string) {
+        return functionsPriority.containsKey(string);
+    }
 }
